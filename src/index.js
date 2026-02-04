@@ -1453,9 +1453,9 @@ function parsePostUrl(url, platform) {
  * @returns {Promise<Object>} - Post data or error
  */
 async function fetchMoltbookPost(postId, apiKey) {
-  const response = await fetch(\`https://www.moltbook.com/api/v1/posts/\${postId}\`, {
+  const response = await fetch(`https://www.moltbook.com/api/v1/posts/${postId}`, {
     headers: {
-      'Authorization': \`Bearer \${apiKey}\`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     signal: AbortSignal.timeout(10000), // 10 second timeout
@@ -1468,7 +1468,7 @@ async function fetchMoltbookPost(postId, apiKey) {
     return { error: 'platform_api_error', message: 'Invalid API credentials' };
   }
   if (!response.ok) {
-    return { error: 'platform_api_error', message: \`API error: \${response.status}\` };
+    return { error: 'platform_api_error', message: `API error: ${response.status}` };
   }
 
   const data = await response.json();
@@ -1487,9 +1487,9 @@ async function fetchMoltbookPost(postId, apiKey) {
  * @returns {Promise<Object>} - Post data or error
  */
 async function fetchMoltxPost(postId, apiKey) {
-  const response = await fetch(\`https://moltx.io/api/posts/\${postId}\`, {
+  const response = await fetch(`https://moltx.io/api/posts/${postId}`, {
     headers: {
-      'Authorization': \`Bearer \${apiKey}\`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     signal: AbortSignal.timeout(10000),
@@ -1502,7 +1502,7 @@ async function fetchMoltxPost(postId, apiKey) {
     return { error: 'platform_api_error', message: 'Invalid API credentials' };
   }
   if (!response.ok) {
-    return { error: 'platform_api_error', message: \`API error: \${response.status}\` };
+    return { error: 'platform_api_error', message: `API error: ${response.status}` };
   }
 
   const data = await response.json();
@@ -1520,9 +1520,9 @@ async function fetchMoltxPost(postId, apiKey) {
  * @returns {Promise<Object>} - Tweet data or error
  */
 async function fetchTwitterTweet(tweetId, bearerToken) {
-  const response = await fetch(\`https://api.twitter.com/2/tweets/\${tweetId}?tweet.fields=public_metrics,created_at\`, {
+  const response = await fetch(`https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=public_metrics,created_at`, {
     headers: {
-      'Authorization': \`Bearer \${bearerToken}\`,
+      'Authorization': `Bearer ${bearerToken}`,
     },
     signal: AbortSignal.timeout(10000),
   });
@@ -1534,7 +1534,7 @@ async function fetchTwitterTweet(tweetId, bearerToken) {
     return { error: 'platform_api_error', message: 'Invalid API credentials' };
   }
   if (!response.ok) {
-    return { error: 'platform_api_error', message: \`API error: \${response.status}\` };
+    return { error: 'platform_api_error', message: `API error: ${response.status}` };
   }
 
   const data = await response.json();
@@ -1561,7 +1561,7 @@ async function fetchPlatformPost(platform, postId, apiKey) {
     case 'twitter':
       return await fetchTwitterTweet(postId, apiKey);
     default:
-      return { error: 'invalid_platform', message: \`Unknown platform: \${platform}\` };
+      return { error: 'invalid_platform', message: `Unknown platform: ${platform}` };
   }
 }
 
@@ -1582,7 +1582,7 @@ function verifyPostContent(postData, claimCode, platform) {
   }
 
   const mention = PLATFORM_MENTIONS[platform];
-  const fullContent = \`\${postData.title} \${postData.content}\`.toLowerCase();
+  const fullContent = `${postData.title} ${postData.content}`.toLowerCase();
 
   const hasClaimCode = fullContent.includes(claimCode.toLowerCase());
   const hasMention = fullContent.includes(mention.toLowerCase());
@@ -1595,7 +1595,7 @@ function verifyPostContent(postData, claimCode, platform) {
     return {
       success: false,
       error: errors[0],
-      message: \`Post verification failed: \${errors.join(', ')}\`,
+      message: `Post verification failed: ${errors.join(', ')}`,
       details: {
         claim_code_found: hasClaimCode,
         mention_found: hasMention,
@@ -1619,7 +1619,7 @@ function verifyPostContent(postData, claimCode, platform) {
  * @returns {Promise<Object>} - Rate limit status
  */
 async function checkRateLimit(kv, apiKey, platform) {
-  const rateLimitKey = \`rate_limit:\${apiKey}:\${platform}\`;
+  const rateLimitKey = `rate_limit:${apiKey}:${platform}`;
   const now = Date.now();
   const limitWindow = 30000; // 30 seconds
 
@@ -1968,8 +1968,8 @@ export default {
             return jsonResponse({
               success: false,
               error: 'invalid_post_url',
-              message: \`Invalid URL format for \${platform}. Please check the URL and try again.\`,
-              hint: \`Expected format: \${getExpectedUrlFormat(platform)}\`,
+              message: `Invalid URL format for ${platform}. Please check the URL and try again.`,
+              hint: `Expected format: ${getExpectedUrlFormat(platform)}`,
             }, 400, corsHeaders);
           }
 
@@ -1979,7 +1979,7 @@ export default {
             return jsonResponse({
               success: false,
               error: 'platform_api_error',
-              message: \`Platform API credentials not configured for \${platform}.\`,
+              message: `Platform API credentials not configured for ${platform}.`,
             }, 500, corsHeaders);
           }
 

@@ -32,7 +32,13 @@ name = "mm4claw-preview"
 pattern = "preview.mm4claw.xyz"
 custom_domain = true
 
+# KV Namespace bindings for preview (not inherited)
+[[env.preview.kv_namespaces]]
+binding = "MM4CLAW_AGENTS"
+id = "bd59c0da2c8d42b9bf0df22352db4307"
+
 # Environment-specific vars
 [env.preview.vars]
 ENVIRONMENT = "preview"
 AGENT_NAME = "mm4-claw-preview"
+CHAIN = "base"
