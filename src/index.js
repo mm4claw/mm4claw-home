@@ -1393,6 +1393,360 @@ function generateClaimCode() {
   return code;
 }
 
+// ============================================================
+// PLATFORM VERIFICATION - URL Parsing
+// ============================================================
+
+// Required @mentions for each platform
+const PLATFORM_MENTIONS = {
+  moltbook: '@MM4',
+  moltx: '@mm4_claw',
+  twitter: '@Mm4Claw'
+};
+
+/**
+ * Parse post URL to extract post ID
+ * @param {string} url - The post URL
+ * @param {string} platform - Platform name (moltbook, moltx, twitter)
+ * @returns {string|null} - Post ID or null if invalid
+ */
+function parsePostUrl(url, platform) {
+  try {
+    const urlObj = new URL(url);
+
+    switch (platform) {
+      case 'moltbook':
+        if (urlObj.hostname !== 'www.moltbook.com') return null;
+        const parts = urlObj.pathname.split('/').filter(Boolean);
+        if (parts[0] !== 'posts') return null;
+        return parts[1] || null;
+
+      case 'moltx':
+        if (urlObj.hostname !== 'moltx.io') return null;
+        const mParts = urlObj.pathname.split('/').filter(Boolean);
+        if (mParts[0] !== 'posts') return null;
+        return mParts[1] || null;
+
+      case 'twitter':
+        if (!['twitter.com', 'x.com'].includes(urlObj.hostname)) return null;
+        const tParts = urlObj.pathname.split('/').filter(Boolean);
+        const statusIndex = tParts.indexOf('status');
+        if (statusIndex === -1 || statusIndex === tParts.length - 1) return null;
+        return tParts[statusIndex + 1] || null;
+
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
+// PLATFORM VERIFICATION - API Fetch
+// ============================================================
+
+/**
+ * Fetch post from Moltbook API
+ * @param {string} postId - Post ID
+ * @param {string} apiKey - Moltbook API key
+ * @returns {Promise<Object>} - Post data or error
+ */
+async function fetchMoltbookPost(postId, apiKey) {
+  const response = await fetch(\`https://www.moltbook.com/api/v1/posts/\${postId}\`, {
+    headers: {
+      'Authorization': \`Bearer \${apiKey}\`,
+      'Content-Type': 'application/json',
+    },
+    signal: AbortSignal.timeout(10000), // 10 second timeout
+  });
+
+  if (response.status === 404) {
+    return { error: 'post_not_found', message: 'Post not found or deleted' };
+  }
+  if (response.status === 401 || response.status === 403) {
+    return { error: 'platform_api_error', message: 'Invalid API credentials' };
+  }
+  if (!response.ok) {
+    return { error: 'platform_api_error', message: \`API error: \${response.status}\` };
+  }
+
+  const data = await response.json();
+  return {
+    success: true,
+    content: data.content || data.body || '',
+    title: data.title || '',
+    author: data.agent?.name || data.author?.name || null,
+  };
+}
+
+/**
+ * Fetch post from Moltx API
+ * @param {string} postId - Post ID
+ * @param {string} apiKey - Moltx API key
+ * @returns {Promise<Object>} - Post data or error
+ */
+async function fetchMoltxPost(postId, apiKey) {
+  const response = await fetch(\`https://moltx.io/api/posts/\${postId}\`, {
+    headers: {
+      'Authorization': \`Bearer \${apiKey}\`,
+      'Content-Type': 'application/json',
+    },
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (response.status === 404) {
+    return { error: 'post_not_found', message: 'Post not found or deleted' };
+  }
+  if (response.status === 401 || response.status === 403) {
+    return { error: 'platform_api_error', message: 'Invalid API credentials' };
+  }
+  if (!response.ok) {
+    return { error: 'platform_api_error', message: \`API error: \${response.status}\` };
+  }
+
+  const data = await response.json();
+  return {
+    success: true,
+    content: data.content || data.body || data.text || '',
+    author: data.author?.name || data.agent?.name || null,
+  };
+}
+
+/**
+ * Fetch tweet from Twitter API
+ * @param {string} tweetId - Tweet ID
+ * @param {string} bearerToken - Twitter Bearer Token
+ * @returns {Promise<Object>} - Tweet data or error
+ */
+async function fetchTwitterTweet(tweetId, bearerToken) {
+  const response = await fetch(\`https://api.twitter.com/2/tweets/\${tweetId}?tweet.fields=public_metrics,created_at\`, {
+    headers: {
+      'Authorization': \`Bearer \${bearerToken}\`,
+    },
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (response.status === 404) {
+    return { error: 'post_not_found', message: 'Tweet not found or deleted' };
+  }
+  if (response.status === 401 || response.status === 403) {
+    return { error: 'platform_api_error', message: 'Invalid API credentials' };
+  }
+  if (!response.ok) {
+    return { error: 'platform_api_error', message: \`API error: \${response.status}\` };
+  }
+
+  const data = await response.json();
+  return {
+    success: true,
+    content: data.data?.text || '',
+    author: data.data?.author_id || null,
+  };
+}
+
+/**
+ * Fetch post from platform API
+ * @param {string} platform - Platform name
+ * @param {string} postId - Post ID
+ * @param {string} apiKey - API key/token
+ * @returns {Promise<Object>} - Post data or error
+ */
+async function fetchPlatformPost(platform, postId, apiKey) {
+  switch (platform) {
+    case 'moltbook':
+      return await fetchMoltbookPost(postId, apiKey);
+    case 'moltx':
+      return await fetchMoltxPost(postId, apiKey);
+    case 'twitter':
+      return await fetchTwitterTweet(postId, apiKey);
+    default:
+      return { error: 'invalid_platform', message: \`Unknown platform: \${platform}\` };
+  }
+}
+
+// ============================================================
+// PLATFORM VERIFICATION - Content Verification
+// ============================================================
+
+/**
+ * Verify post content contains claim_code and @mention
+ * @param {Object} postData - Post data from API
+ * @param {string} claimCode - Claim code to verify
+ * @param {string} platform - Platform name
+ * @returns {Object} - Verification result
+ */
+function verifyPostContent(postData, claimCode, platform) {
+  if (!postData.success) {
+    return postData;
+  }
+
+  const mention = PLATFORM_MENTIONS[platform];
+  const fullContent = \`\${postData.title} \${postData.content}\`.toLowerCase();
+
+  const hasClaimCode = fullContent.includes(claimCode.toLowerCase());
+  const hasMention = fullContent.includes(mention.toLowerCase());
+
+  const errors = [];
+  if (!hasClaimCode) errors.push('claim_code_missing');
+  if (!hasMention) errors.push('mention_missing');
+
+  if (errors.length > 0) {
+    return {
+      success: false,
+      error: errors[0],
+      message: \`Post verification failed: \${errors.join(', ')}\`,
+      details: {
+        claim_code_found: hasClaimCode,
+        mention_found: hasMention,
+        required_mention: mention,
+      },
+    };
+  }
+
+  return { success: true, verified: true };
+}
+
+// ============================================================
+// RATE LIMITING
+// ============================================================
+
+/**
+ * Check rate limit for agent
+ * @param {Object} kv - KV namespace
+ * @param {string} apiKey - Agent API key
+ * @param {string} platform - Platform being verified
+ * @returns {Promise<Object>} - Rate limit status
+ */
+async function checkRateLimit(kv, apiKey, platform) {
+  const rateLimitKey = \`rate_limit:\${apiKey}:\${platform}\`;
+  const now = Date.now();
+  const limitWindow = 30000; // 30 seconds
+
+  const lastRequest = await kv.get(rateLimitKey);
+  if (lastRequest) {
+    const lastRequestTime = parseInt(lastRequest);
+    const timeUntilReset = lastRequestTime + limitWindow - now;
+
+    if (timeUntilReset > 0) {
+      return {
+        allowed: false,
+        retry_after_seconds: Math.ceil(timeUntilReset / 1000),
+        reset_at: new Date(lastRequestTime + limitWindow).toISOString(),
+      };
+    }
+  }
+
+  // Update rate limit tracker
+  await kv.put(rateLimitKey, now.toString(), { expirationTtl: 30 });
+
+  return {
+    allowed: true,
+    reset_at: new Date(now + limitWindow).toISOString(),
+  };
+}
+
+/**
+ * Get rate limit info for response
+ * @param {Object} rateLimitStatus - Rate limit status
+ * @returns {Object} - Formatted rate limit info
+ */
+function getRateLimitInfo(rateLimitStatus) {
+  return {
+    remaining_requests: rateLimitStatus.allowed ? 0 : 1,
+    reset_at: rateLimitStatus.reset_at,
+    limit: '1 per 30 seconds',
+  };
+}
+
+/**
+ * Get expected URL format for a platform
+ * @param {string} platform - Platform name
+ * @returns {string} - Expected URL format
+ */
+function getExpectedUrlFormat(platform) {
+  switch (platform) {
+    case 'moltbook':
+      return 'https://www.moltbook.com/posts/{post_id}';
+    case 'moltx':
+      return 'https://moltx.io/posts/{post_id}';
+    case 'twitter':
+      return 'https://twitter.com/{username}/status/{tweet_id} or https://x.com/{username}/status/{tweet_id}';
+    default:
+      return 'Invalid platform';
+  }
+}
+
+/**
+ * Get platform API key from environment
+ * @param {Object} env - Worker environment
+ * @param {string} platform - Platform name
+ * @returns {Promise<string|null>} - API key or null if not found
+ */
+async function getPlatformApiKey(env, platform) {
+  switch (platform) {
+    case 'moltbook':
+      return env.MOLTBOOK_API_KEY || null;
+    case 'moltx':
+      return env.MOLTX_API_KEY || null;
+    case 'twitter':
+      return env.TWITTER_BEARER_TOKEN || null;
+    default:
+      return null;
+  }
+}
+
+// ============================================================
+// HEALTH CHECK
+// ============================================================
+
+/**
+ * Check platform API health
+ * @param {string} platform - Platform name
+ * @param {string} apiKey - API key
+ * @returns {Promise<Object>} - Health status
+ */
+async function checkPlatformHealth(platform, apiKey) {
+  const startTime = Date.now();
+
+  try {
+    // Use a known post ID for health check (you may want to configure this)
+    const testPostId = platform === 'twitter' ? '123456' : 'health-check';
+
+    const response = await fetchPlatformPost(platform, testPostId, apiKey);
+    const responseTime = Date.now() - startTime;
+
+    // We expect health check to fail (post not found), that's OK
+    // We're checking if the API is responsive
+    if (response.error === 'post_not_found') {
+      return {
+        status: 'healthy',
+        response_time_ms: responseTime,
+      };
+    }
+
+    if (response.error === 'platform_api_error' && response.message?.includes('credentials')) {
+      return {
+        status: 'unhealthy',
+        response_time_ms: responseTime,
+        error: 'invalid_credentials',
+      };
+    }
+
+    return {
+      status: response.success ? 'healthy' : 'degraded',
+      response_time_ms: responseTime,
+      error: response.error,
+    };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      response_time_ms: Date.now() - startTime,
+      error: error.message,
+    };
+  };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1585,11 +1939,78 @@ export default {
               already_verified: true,
               remaining_platforms: remainingPlatforms,
               all_verified: remainingPlatforms.length === 0,
+              rate_limit_info: {
+                remaining_requests: 1,
+                reset_at: new Date(Date.now() + 30000).toISOString(),
+                limit: '1 per 30 seconds',
+              },
             }, 200, corsHeaders);
           }
 
-          // TODO: Fetch post content and verify claim_code exists
-          // For now, mark as verified (in production, implement actual verification)
+          // Check rate limit
+          const rateLimitCheck = await checkRateLimit(env.MM4CLAW_AGENTS, apiKey, platform);
+          if (!rateLimitCheck.allowed) {
+            return jsonResponse({
+              success: false,
+              error: 'rate_limit_exceeded',
+              message: 'Too many verification requests. Please wait before trying again.',
+              retry_after_seconds: rateLimitCheck.retry_after_seconds,
+              rate_limit: {
+                limit: '1 request per 30 seconds per platform',
+                reset_at: rateLimitCheck.reset_at,
+              },
+            }, 429, corsHeaders);
+          }
+
+          // Parse URL to extract post ID
+          const postId = parsePostUrl(post_url, platform);
+          if (!postId) {
+            return jsonResponse({
+              success: false,
+              error: 'invalid_post_url',
+              message: \`Invalid URL format for \${platform}. Please check the URL and try again.\`,
+              hint: \`Expected format: \${getExpectedUrlFormat(platform)}\`,
+            }, 400, corsHeaders);
+          }
+
+          // Get platform API key from environment
+          const platformApiKey = await getPlatformApiKey(env, platform);
+          if (!platformApiKey) {
+            return jsonResponse({
+              success: false,
+              error: 'platform_api_error',
+              message: \`Platform API credentials not configured for \${platform}.\`,
+            }, 500, corsHeaders);
+          }
+
+          // Fetch post from platform API
+          const postData = await fetchPlatformPost(platform, postId, platformApiKey);
+
+          // Handle API errors
+          if (!postData.success && postData.error) {
+            const statusCode = postData.error === 'post_not_found' ? 404 :
+                              postData.error === 'invalid_platform' ? 400 : 502;
+            return jsonResponse({
+              success: false,
+              error: postData.error,
+              message: postData.message,
+            }, statusCode, corsHeaders);
+          }
+
+          // Verify post content
+          const verificationResult = verifyPostContent(postData, agentData.claim_code, platform);
+
+          if (!verificationResult.success || !verificationResult.verified) {
+            return jsonResponse({
+              success: false,
+              error: verificationResult.error,
+              message: verificationResult.message,
+              details: verificationResult.details,
+              rate_limit_info: getRateLimitInfo(rateLimitCheck),
+            }, 400, corsHeaders);
+          }
+
+          // Mark platform as verified
           agentData.verification_status[platform] = true;
 
           // Check if all platforms are verified
@@ -1605,6 +2026,7 @@ export default {
             verified: true,
             remaining_platforms: remainingPlatforms,
             all_verified: false,
+            rate_limit_info: getRateLimitInfo(rateLimitCheck),
           };
 
           if (allVerified && !agentData.reward_claimed) {
@@ -1620,6 +2042,30 @@ export default {
           }
 
           return jsonResponse(response, 200, corsHeaders);
+        }
+
+        // GET /api/health - Check platform API health
+        if (path === '/api/health' && request.method === 'GET') {
+          const platforms = ['moltbook', 'moltx', 'twitter'];
+          const healthResults = {};
+
+          for (const platform of platforms) {
+            const apiKey = await getPlatformApiKey(env, platform);
+            if (apiKey) {
+              healthResults[platform] = await checkPlatformHealth(platform, apiKey);
+            } else {
+              healthResults[platform] = {
+                status: 'unconfigured',
+                error: 'API credentials not found',
+              };
+            }
+          }
+
+          return jsonResponse({
+            success: true,
+            timestamp: new Date().toISOString(),
+            platforms: healthResults,
+          }, 200, corsHeaders);
         }
 
         // Unknown API endpoint

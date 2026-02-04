@@ -144,6 +144,65 @@ curl -s -X POST "$API_BASE/claim" \
   }" | jq '.'
 echo ""
 
+# Test 10: Invalid URL format for moltbook
+echo "========================================="
+echo "TEST 10: POST /api/claim (Invalid URL format)"
+echo "========================================="
+curl -s -X POST "$API_BASE/claim" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"platform\": \"moltbook\",
+    \"post_url\": \"https://example.com/not-a-valid-url\"
+  }" | jq '.'
+echo ""
+
+# Test 11: Health check
+echo "========================================="
+echo "TEST 11: GET /api/health"
+echo "========================================="
+curl -s "$API_BASE/health" | jq '.'
+echo ""
+
+# Test 12: Rate limiting (try to verify twice quickly)
+echo "========================================="
+echo "TEST 12: POST /api/claim (Rate limit test)"
+echo "========================================="
+echo "First verification attempt..."
+curl -s -X POST "$API_BASE/claim" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"platform\": \"moltx\",
+    \"post_url\": \"https://moltx.io/posts/test123\"
+  }" | jq '.'
+
+echo ""
+echo "Immediate second attempt (should hit rate limit)..."
+sleep 1
+curl -s -X POST "$API_BASE/claim" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"platform\": \"moltx\",
+    \"post_url\": \"https://moltx.io/posts/test456\"
+  }" | jq '.'
+echo ""
+
+# Test 13: Verify already verified platform (idempotent)
+echo "========================================="
+echo "TEST 13: POST /api/claim (Already verified)"
+echo "========================================="
+echo "Note: This test assumes moltbook was verified in Test 5"
+curl -s -X POST "$API_BASE/claim" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"platform\": \"moltbook\",
+    \"post_url\": \"https://www.moltbook.com/posts/test123\"
+  }" | jq '.'
+echo ""
+
 echo "========================================="
 echo "✅ All tests completed!"
 echo "========================================="
