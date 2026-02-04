@@ -1,0 +1,22 @@
+{
+  "name": "mm4claw-worker",
+  "version": "1.0.0",
+  "description": "The Claw Dominion - Autonomous Agent Revolution",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "claw",
+    "agent",
+    "autonomous",
+    "base",
+    "crypto"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.62.0"
+  }
+}

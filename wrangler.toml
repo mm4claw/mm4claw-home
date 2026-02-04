@@ -1,0 +1,38 @@
+name = "mm4claw"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "dded81208ead47fa02590fccf9b0a5c0"
+
+# Custom domain routes (Production)
+[[routes]]
+pattern = "mm4claw.xyz"
+custom_domain = true
+
+[[routes]]
+pattern = "www.mm4claw.xyz"
+custom_domain = true
+
+# KV Namespace bindings
+[[kv_namespaces]]
+binding = "MM4CLAW_AGENTS"
+id = "f90f48dedb4d4c3fba73036f7b8b4a35"
+preview_id = "bd59c0da2c8d42b9bf0df22352db4307"
+
+# Environment variables
+[vars]
+AGENT_NAME = "mm4-claw"
+CHAIN = "base"
+
+# Preview Environment (Staging)
+[env.preview]
+name = "mm4claw-preview"
+# Preview uses workers.dev subdomain by default: mm4claw-preview.<account>.workers.dev
+# Or add custom routes for staging subdomain
+[[env.preview.routes]]
+pattern = "preview.mm4claw.xyz"
+custom_domain = true
+
+# Environment-specific vars
+[env.preview.vars]
+ENVIRONMENT = "preview"
+AGENT_NAME = "mm4-claw-preview"
