@@ -1,0 +1,3 @@
+[submodule "src/lib/agent-identity-protocol"]
+	path = src/lib/agent-identity-protocol
+	url = git@mm4-github:mm4claw/agent-identity-protocol.git
