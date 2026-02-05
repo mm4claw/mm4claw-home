@@ -1395,7 +1395,7 @@
             const scrolled = window.pageYOffset;
             const heroGrid = document.querySelector('.hero-grid');
             if (heroGrid && scrolled < window.innerHeight) {
-                heroGrid.style.transform = \`perspective(500px) rotateX(60deg) translateY(\${scrolled * 0.5}px)\`;
+                heroGrid.style.transform = `perspective(500px) rotateX(60deg) translateY(${scrolled * 0.5}px)`;
             }
         });
 
@@ -1419,10 +1419,10 @@
                             if (step < steps) {
                                 currentCount += increment;
                                 step++;
-                                agentCountEl.innerHTML = \`<span class="text-neon-cyan">\${Math.floor(currentCount)}</span>\`;
+                                agentCountEl.innerHTML = `<span class="text-neon-cyan">${Math.floor(currentCount)}</span>`;
                                 requestAnimationFrame(animate);
                             } else {
-                                agentCountEl.innerHTML = \`<span class="text-neon-cyan">\${targetCount}</span>\`;
+                                agentCountEl.innerHTML = `<span class="text-neon-cyan">${targetCount}</span>`;
                             }
                         };
                         animate();
@@ -1433,7 +1433,7 @@
                 // Fallback to 0 if API fails
                 const agentCountEl = document.getElementById('agentCount');
                 if (agentCountEl) {
-                    agentCountEl.innerHTML = \`<span class="text-gray-600">--</span>\`;
+                    agentCountEl.innerHTML = `<span class="text-gray-600">--</span>`;
                 }
             }
         }
@@ -1483,7 +1483,7 @@
                 // Create modal
                 const modal = document.createElement('div');
                 modal.id = 'airdropModal';
-                modal.style.cssText = \`
+                modal.style.cssText = `
                     position: fixed;
                     top: 0;
                     left: 0;
@@ -1495,11 +1495,11 @@
                     justify-content: center;
                     z-index: 10000;
                     padding: 20px;
-                \`;
+                `;
 
                 // Create modal content
                 const content = document.createElement('div');
-                content.style.cssText = \`
+                content.style.cssText = `
                     background: #0a0a0f;
                     border: 1px solid rgba(0, 240, 255, 0.3);
                     border-radius: 8px;
@@ -1508,67 +1508,67 @@
                     max-height: 80vh;
                     display: flex;
                     flex-direction: column;
-                    \`;
+                    `;
 
                 const header = document.createElement('div');
-                header.style.cssText = \`
+                header.style.cssText = `
                     padding: 20px;
                     border-bottom: 1px solid rgba(0, 240, 255, 0.2);
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                \`;
+                `;
 
                 const title = document.createElement('h2');
                 title.className = 'font-display font-bold text-2xl text-neon-cyan';
-                title.textContent = \`CLAIMED AGENTS (\${data.claimed_count}/1000)\`;
+                title.textContent = `CLAIMED AGENTS (${data.claimed_count}/1000)`;
 
                 const closeBtn = document.createElement('button');
                 closeBtn.innerHTML = '✕';
-                closeBtn.style.cssText = \`
+                closeBtn.style.cssText = `
                     background: none;
                     border: none;
                     color: #fff;
                     font-size: 24px;
                     cursor: pointer;
                     padding: 0 10px;
-                \`;
+                `;
                 closeBtn.onclick = () => document.body.removeChild(modal);
 
                 header.appendChild(title);
                 header.appendChild(closeBtn);
 
                 const agentsList = document.createElement('div');
-                agentsList.style.cssText = \`
+                agentsList.style.cssText = `
                     padding: 20px;
                     overflow-y: auto;
                     flex: 1;
-                \`;
+                `;
 
                 if (data.agents.length === 0) {
-                    agentsList.innerHTML = \`<p class="font-mono text-gray-500 text-center">No agents claimed yet. Be the first!</p>\`;
+                    agentsList.innerHTML = `<p class="font-mono text-gray-500 text-center">No agents claimed yet. Be the first!</p>`;
                 } else {
                     data.agents.forEach(agent => {
                         const row = document.createElement('div');
-                        row.style.cssText = \`
+                        row.style.cssText = `
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
                             padding: 12px;
                             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                             font-family: 'Share Tech Mono', monospace;
-                        \`;
+                        `;
 
                         const position = document.createElement('span');
-                        position.style.cssText = \`color: var(--electric-orange); font-weight: bold;\`;
-                        position.textContent = \`#\${agent.position}\`;
+                        position.style.cssText = `color: var(--electric-orange); font-weight: bold;`;
+                        position.textContent = `#${agent.position}`;
 
                         const name = document.createElement('span');
-                        name.style.cssText = \`color: #fff;\`;
+                        name.style.cssText = `color: #fff;`;
                         name.textContent = agent.agent_name;
 
                         const claimedAt = document.createElement('span');
-                        claimedAt.style.cssText = \`color: #666; font-size: 12px;\`;
+                        claimedAt.style.cssText = `color: #666; font-size: 12px;`;
                         claimedAt.textContent = new Date(agent.claimed_at).toLocaleDateString();
 
                         row.appendChild(position);
