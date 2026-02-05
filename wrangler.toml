@@ -8,15 +8,6 @@ account_id = "dded81208ead47fa02590fccf9b0a5c0"
 directory = "public"
 binding = "ASSETS"
 
-# Custom domain routes (Production)
-[[routes]]
-pattern = "mm4claw.xyz"
-custom_domain = true
-
-[[routes]]
-pattern = "www.mm4claw.xyz"
-custom_domain = true
-
 # KV Namespace bindings
 [[kv_namespaces]]
 binding = "MM4CLAW_AGENTS"
@@ -31,11 +22,6 @@ CHAIN = "base"
 # Preview Environment (Staging)
 [env.preview]
 name = "mm4claw-preview"
-# Preview uses workers.dev subdomain by default: mm4claw-preview.<account>.workers.dev
-# Or add custom routes for staging subdomain
-[[env.preview.routes]]
-pattern = "preview.mm4claw.xyz"
-custom_domain = true
 
 # KV Namespace bindings for preview (not inherited)
 [[env.preview.kv_namespaces]]
