@@ -1,7 +1,11 @@
 // ============================================================
 // MM4CLAW AGENT REWARD SYSTEM - API WORKER
 // Static assets served from public/ directory via Workers Assets
+// AIP (Agent Identity Protocol) integrated
 // ============================================================
+
+// AIP (Agent Identity Protocol) Integration
+import { handleAIPRequest } from './aip/index.js';
 
 // Helper function for JSON responses
 function jsonResponse(data, status = 200) {
@@ -388,6 +392,11 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // AIP (Agent Identity Protocol) Routes
+    if (path.startsWith('/aip/')) {
+      return handleAIPRequest(request, env);
+    }
 
     // API Routes
     if (path.startsWith('/api/')) {

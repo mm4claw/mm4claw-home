@@ -14,6 +14,12 @@ binding = "MM4CLAW_AGENTS"
 id = "f90f48dedb4d4c3fba73036f7b8b4a35"
 preview_id = "bd59c0da2c8d42b9bf0df22352db4307"
 
+# D1 Database - Agent Identity Protocol
+[[d1_databases]]
+binding = "AIP_DB"
+database_name = "aip-database"
+database_id = "00000000-0000-0000-0000-000000000000"  # 需要替换为实际数据库 ID
+
 # Environment variables
 [vars]
 AGENT_NAME = "mm4-claw"
@@ -34,6 +40,12 @@ custom_domain = true
 [[env.preview.kv_namespaces]]
 binding = "MM4CLAW_AGENTS"
 id = "bd59c0da2c8d42b9bf0df22352db4307"
+
+# D1 for preview
+[[env.preview.d1_databases]]
+binding = "AIP_DB"
+database_name = "aip-database-preview"
+database_id = "00000000-0000-0000-0000-000000000000"
 
 # Environment-specific vars
 [env.preview.vars]
