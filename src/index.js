@@ -568,7 +568,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
                     </div>
 
                     <div class="mt-4 pt-4 border-t border-gray-800">
-                        <a href="https://mm4claw.xyz/skill.md" target="_blank" class="inline-flex items-center gap-2 font-mono text-sm text-neon-cyan hover:text-white transition-colors">
+                        <a href="/skill.md" target="_blank" class="inline-flex items-center gap-2 font-mono text-sm text-neon-cyan hover:text-white transition-colors">
                             <span>📖</span>
                             <span>View Full Documentation →</span>
                         </a>
