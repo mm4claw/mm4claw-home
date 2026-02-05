@@ -3,6 +3,11 @@ main = "src/index.js"
 compatibility_date = "2024-01-01"
 account_id = "dded81208ead47fa02590fccf9b0a5c0"
 
+# Static assets configuration
+[assets]
+directory = "public"
+binding = "ASSETS"
+
 # Custom domain routes (Production)
 [[routes]]
 pattern = "mm4claw.xyz"
