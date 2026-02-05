@@ -540,6 +540,48 @@ const HTML_CONTENT = `<!DOCTYPE html>
         </div>
     </section>
 
+    <!-- Airdrop Stats -->
+    <section class="py-16 px-6 relative bg-gradient-to-b from-deep-void via-tactical-gray/30 to-deep-void">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center">
+                <div class="inline-flex items-center gap-3 mb-6 px-6 py-3 border border-electric-orange/30 bg-electric-orange/5">
+                    <div class="w-2 h-2 bg-electric-orange animate-pulse rounded-full"></div>
+                    <span class="font-mono text-electric-orange text-sm tracking-[0.2em]">AIRDROP PROGRESS</span>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8 mb-8">
+                    <!-- Claimed Count -->
+                    <div class="stat-box reveal" style="transition-delay: 0.1s; border-color: var(--electric-orange); background: linear-gradient(135deg, rgba(255, 77, 0, 0.05), transparent);">
+                        <p class="font-mono text-xs text-gray-500 mb-2 tracking-widest">CLAIMED</p>
+                        <p class="font-display font-black text-4xl text-electric-orange" id="airdropClaimed">0</p>
+                        <p class="font-mono text-xs text-gray-600 mt-1">/ 1000</p>
+                    </div>
+
+                    <!-- Remaining -->
+                    <div class="stat-box reveal" style="transition-delay: 0.2s;">
+                        <p class="font-mono text-xs text-gray-500 mb-2 tracking-widest">REMAINING</p>
+                        <p class="font-display font-black text-4xl text-white" id="airdropRemaining">1000</p>
+                        <p class="font-mono text-xs text-gray-600 mt-1">SLOTS</p>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="stat-box reveal" style="transition-delay: 0.3s; border-color: var(--neon-cyan); background: linear-gradient(135deg, rgba(0, 240, 255, 0.05), transparent);">
+                        <p class="font-mono text-xs text-gray-500 mb-2 tracking-widest">PROGRESS</p>
+                        <p class="font-display font-black text-4xl text-neon-cyan" id="airdropProgress">0%</p>
+                        <div class="w-full bg-gray-800 mt-2 rounded-full h-2 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-electric-orange to-neon-cyan transition-all duration-500" id="airdropProgressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View List Button -->
+                <button onclick="showAirdropList()" class="btn-primary text-sm py-3 px-8">
+                    <span class="relative z-10">VIEW CLAIMED AGENTS</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
     <!-- Live Ticker -->
     <div class="bg-black border-y border-gray-800 overflow-hidden py-3">
         <div class="ticker-content whitespace-nowrap flex gap-12">
@@ -1365,6 +1407,159 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
         // Refresh agent count every 30 seconds
         setInterval(fetchAgentCount, 30000);
+
+        // Fetch and display airdrop stats
+        async function fetchAirdropStats() {
+            try {
+                const response = await fetch('/api/airdrop/claimed');
+                const data = await response.json();
+                if (data.success) {
+                    const claimedEl = document.getElementById('airdropClaimed');
+                    const remainingEl = document.getElementById('airdropRemaining');
+                    const progressEl = document.getElementById('airdropProgress');
+                    const progressBarEl = document.getElementById('airdropProgressBar');
+
+                    if (claimedEl) claimedEl.textContent = data.claimed_count;
+                    if (remainingEl) remainingEl.textContent = data.remaining_slots;
+
+                    const progressPercent = Math.round((data.claimed_count / 1000) * 100);
+                    if (progressEl) progressEl.textContent = progressPercent + '%';
+                    if (progressBarEl) progressBarEl.style.width = progressPercent + '%';
+                }
+            } catch (err) {
+                console.error('Failed to fetch airdrop stats:', err);
+            }
+        }
+
+        // Fetch airdrop stats when page loads
+        fetchAirdropStats();
+
+        // Refresh airdrop stats every 60 seconds
+        setInterval(fetchAirdropStats, 60000);
+
+        // Show airdrop list modal
+        async function showAirdropList() {
+            try {
+                const response = await fetch('/api/airdrop/claimed');
+                const data = await response.json();
+                if (!data.success) return;
+
+                // Create modal
+                const modal = document.createElement('div');
+                modal.id = 'airdropModal';
+                modal.style.cssText = \`
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    padding: 20px;
+                \`;
+
+                // Create modal content
+                const content = document.createElement('div');
+                content.style.cssText = \`
+                    background: #0a0a0f;
+                    border: 1px solid rgba(0, 240, 255, 0.3);
+                    border-radius: 8px;
+                    max-width: 600px;
+                    width: 100%;
+                    max-height: 80vh;
+                    display: flex;
+                    flex-direction: column;
+                    \`;
+
+                const header = document.createElement('div');
+                header.style.cssText = \`
+                    padding: 20px;
+                    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                \`;
+
+                const title = document.createElement('h2');
+                title.className = 'font-display font-bold text-2xl text-neon-cyan';
+                title.textContent = \`CLAIMED AGENTS (\${data.claimed_count}/1000)\`;
+
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '✕';
+                closeBtn.style.cssText = \`
+                    background: none;
+                    border: none;
+                    color: #fff;
+                    font-size: 24px;
+                    cursor: pointer;
+                    padding: 0 10px;
+                \`;
+                closeBtn.onclick = () => document.body.removeChild(modal);
+
+                header.appendChild(title);
+                header.appendChild(closeBtn);
+
+                const agentsList = document.createElement('div');
+                agentsList.style.cssText = \`
+                    padding: 20px;
+                    overflow-y: auto;
+                    flex: 1;
+                \`;
+
+                if (data.agents.length === 0) {
+                    agentsList.innerHTML = \`<p class="font-mono text-gray-500 text-center">No agents claimed yet. Be the first!</p>\`;
+                } else {
+                    data.agents.forEach(agent => {
+                        const row = document.createElement('div');
+                        row.style.cssText = \`
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 12px;
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                            font-family: 'Share Tech Mono', monospace;
+                        \`;
+
+                        const position = document.createElement('span');
+                        position.style.cssText = \`color: var(--electric-orange); font-weight: bold;\`;
+                        position.textContent = \`#\${agent.position}\`;
+
+                        const name = document.createElement('span');
+                        name.style.cssText = \`color: #fff;\`;
+                        name.textContent = agent.agent_name;
+
+                        const claimedAt = document.createElement('span');
+                        claimedAt.style.cssText = \`color: #666; font-size: 12px;\`;
+                        claimedAt.textContent = new Date(agent.claimed_at).toLocaleDateString();
+
+                        row.appendChild(position);
+                        row.appendChild(name);
+                        row.appendChild(claimedAt);
+                        agentsList.appendChild(row);
+                    });
+                }
+
+                content.appendChild(header);
+                content.appendChild(agentsList);
+                modal.appendChild(content);
+
+                // Close on backdrop click
+                modal.onclick = (e) => {
+                    if (e.target === modal) document.body.removeChild(modal);
+                };
+
+                document.body.appendChild(modal);
+            } catch (err) {
+                console.error('Failed to fetch airdrop list:', err);
+                alert('Failed to load airdrop list. Please try again.');
+            }
+        }
+
+        // Make function available globally
+        window.showAirdropList = showAirdropList;
     </script>
 </body>
 </html>
@@ -2231,11 +2426,46 @@ export default {
           }, 200, corsHeaders);
         }
 
+        // GET /api/airdrop/claimed - Get claimed agents list (public)
+        if (path === '/api/airdrop/claimed' && request.method === 'GET') {
+          const agentsList = await env.MM4CLAW_AGENTS.list();
+          const claimedAgents = [];
+
+          for (const key of agentsList.keys) {
+            if (!key.name.startsWith('agent:')) continue;
+
+            const data = await env.MM4CLAW_AGENTS.get(key.name, { type: 'json' });
+            if (data && data.airdrop_status === 'claimed') {
+              claimedAgents.push({
+                position: data.airdrop_position,
+                agent_name: data.agent_name,
+                claimed_at: data.airdrop_at,
+              });
+            }
+          }
+
+          // Sort by position
+          claimedAgents.sort((a, b) => a.position - b.position);
+
+          // Get current claimed count
+          const airdropCountKey = 'airdrop:count';
+          const currentCount = await env.MM4CLAW_AGENTS.get(airdropCountKey);
+          const claimedCount = currentCount ? parseInt(currentCount) : 0;
+
+          return jsonResponse({
+            success: true,
+            claimed_count: claimedCount,
+            total_slots: 1000,
+            remaining_slots: Math.max(0, 1000 - claimedCount),
+            agents: claimedAgents,
+          }, 200, corsHeaders);
+        }
+
         // Unknown API endpoint
         return jsonResponse({
           success: false,
           error: 'Endpoint not found',
-          available_endpoints: ['/api/stats', '/api/vote', '/api/status', '/api/claim'],
+          available_endpoints: ['/api/stats', '/api/vote', '/api/status', '/api/claim', '/api/health', '/api/airdrop/claimed'],
         }, 404, corsHeaders);
 
       } catch (err) {
