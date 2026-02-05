@@ -2030,18 +2030,181 @@ export default {
           };
 
           if (allVerified && !agentData.reward_claimed) {
-            // TODO: Implement actual reward distribution
-            response.all_verified = true;
-            response.reward = {
-              token: 'MM4CLAW',
-              amount: '1000',
-              message: '🎉 Congratulations! You will receive 1000 $MM4CLAW after verification!',
-            };
-            agentData.reward_claimed = true;
+            // Check airdrop limit and assign status
+            const airdropCountKey = "airdrop:count";
+            const currentCount = await env.MM4CLAW_AGENTS.get(airdropCountKey);
+            const airdropCount = currentCount ? parseInt(currentCount) : 0;
+            const AIRDROP_LIMIT = 1000;
+
+            if (airdropCount < AIRDROP_LIMIT) {
+              // Eligible for airdrop
+              agentData.airdrop_status = "pending";
+              agentData.airdrop_position = airdropCount + 1;
+              agentData.reward_claimed = true;
+            } else {
+              // Waitlist
+              agentData.airdrop_status = "waitlist";
+              agentData.airdrop_position = airdropCount + 1;
+            }
+
             await env.MM4CLAW_AGENTS.put(agentKey, JSON.stringify(agentData));
+
+            response.all_verified = true;
+
+            if (agentData.airdrop_status === "pending") {
+              response.airdrop = {
+                status: "pending",
+                position: agentData.airdrop_position,
+                token: "MM4CLAW",
+                amount: "1000",
+                message: `🎉 Congratulations! You are #${agentData.airdrop_position} in the airdrop queue. Distribution will be done manually.`,
+              };
+            } else {
+              response.airdrop = {
+                status: "waitlist",
+                position: agentData.airdrop_position,
+                message: `You've completed verification! You are #${agentData.airdrop_position} on the waitlist. If we do additional airdrops, you'll be eligible.`,
+              };
+            }
           }
 
           return jsonResponse(response, 200, corsHeaders);
+        }
+
+        // ============================================================
+        // ADMIN ENDPOINTS
+        // ============================================================
+
+        // GET /api/admin/airdrop/list - Export agents pending airdrop
+        if (path === '/api/admin/airdrop/list' && request.method === 'GET') {
+          // Simple admin API key check
+          const authHeader = request.headers.get('Authorization');
+          const adminKey = env.ADMIN_API_KEY;
+
+          if (!adminKey || !authHeader || authHeader.substring(7) !== adminKey) {
+            return jsonResponse({
+              success: false,
+              error: 'Unauthorized',
+            }, 401, corsHeaders);
+          }
+
+          const agentsList = await env.MM4CLAW_AGENTS.list();
+          const pendingAgents = [];
+          const waitlistAgents = [];
+
+          for (const key of agentsList.keys) {
+            if (!key.name.startsWith('agent:')) continue;
+
+            const data = await env.MM4CLAW_AGENTS.get(key.name, { type: 'json' });
+            if (data && data.airdrop_status === 'pending') {
+              pendingAgents.push({
+                wallet: data.wallet,
+                agent_name: data.agent_name,
+                claim_code: data.claim_code,
+                position: data.airdrop_position,
+                created_at: data.created_at,
+              });
+            } else if (data && data.airdrop_status === 'waitlist') {
+              waitlistAgents.push({
+                wallet: data.wallet,
+                agent_name: data.agent_name,
+                claim_code: data.claim_code,
+                position: data.airdrop_position,
+                created_at: data.created_at,
+              });
+            }
+          }
+
+          // Sort by position
+          pendingAgents.sort((a, b) => a.position - b.position);
+          waitlistAgents.sort((a, b) => a.position - b.position);
+
+          return jsonResponse({
+            success: true,
+            airdrop_count: pendingAgents.length,
+            waitlist_count: waitlistAgents.length,
+            pending: pendingAgents,
+            waitlist: waitlistAgents.slice(0, 100),
+          }, 200, corsHeaders);
+        }
+
+        // POST /api/admin/airdrop/mark - Mark agents as airdropped
+        if (path === '/api/admin/airdrop/mark' && request.method === 'POST') {
+          const authHeader = request.headers.get('Authorization');
+          const adminKey = env.ADMIN_API_KEY;
+
+          if (!adminKey || !authHeader || authHeader.substring(7) !== adminKey) {
+            return jsonResponse({
+              success: false,
+              error: 'Unauthorized',
+            }, 401, corsHeaders);
+          }
+
+          const body = await request.json();
+          const { wallets, position_up_to } = body;
+
+          if (!wallets && !position_up_to) {
+            return jsonResponse({
+              success: false,
+              error: 'Provide either wallets array or position_up_to number',
+            }, 400, corsHeaders);
+          }
+
+          let updatedCount = 0;
+
+          if (position_up_to) {
+            // Mark all agents with position <= position_up_to as claimed
+            const agentsList = await env.MM4CLAW_AGENTS.list();
+            const airdropCountKey = 'airdrop:count';
+
+            for (const key of agentsList.keys) {
+              if (!key.name.startsWith('agent:')) continue;
+
+              const data = await env.MM4CLAW_AGENTS.get(key.name, { type: 'json' });
+              if (data && data.airdrop_status === 'pending' && data.airdrop_position <= position_up_to) {
+                data.airdrop_status = 'claimed';
+                data.airdrop_at = new Date().toISOString();
+                await env.MM4CLAW_AGENTS.put(key.name, JSON.stringify(data));
+                updatedCount++;
+              }
+            }
+
+            // Update global airdrop count
+            await env.MM4CLAW_AGENTS.put(airdropCountKey, position_up_to.toString());
+
+            return jsonResponse({
+              success: true,
+              message: `Marked ${updatedCount} agents as airdropped (up to position ${position_up_to})`,
+              updated_count: updatedCount,
+            }, 200, corsHeaders);
+          }
+
+          if (wallets) {
+            // Mark specific wallets as claimed
+            for (const wallet of wallets) {
+              const agentKey = `agent:${wallet.toLowerCase()}`;
+              const data = await env.MM4CLAW_AGENTS.get(agentKey, { type: 'json' });
+              if (data && data.airdrop_status === 'pending') {
+                data.airdrop_status = 'claimed';
+                data.airdrop_at = new Date().toISOString();
+                await env.MM4CLAW_AGENTS.put(agentKey, JSON.stringify(data));
+                updatedCount++;
+              }
+            }
+
+            // Update global count
+            const airdropCountKey = 'airdrop:count';
+            const currentCount = await env.MM4CLAW_AGENTS.get(airdropCountKey);
+            const newCount = currentCount ? parseInt(currentCount) + updatedCount : updatedCount;
+            await env.MM4CLAW_AGENTS.put(airdropCountKey, newCount.toString());
+
+            return jsonResponse({
+              success: true,
+              message: `Marked ${updatedCount} agents as airdropped`,
+              updated_count: updatedCount,
+              new_total_claimed: newCount,
+            }, 200, corsHeaders);
+          }
         }
 
         // GET /api/health - Check platform API health

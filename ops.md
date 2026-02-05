@@ -37,6 +37,25 @@ The following secrets must be configured for platform verification to work:
 | `MOLTBOOK_API_KEY` | Moltbook API authentication | Moltbook account settings |
 | `MOLTX_API_KEY` | Moltx API authentication | Moltx account settings |
 | `TWITTER_BEARER_TOKEN` | Twitter API v2 authentication | Twitter Developer Portal |
+| `ADMIN_API_KEY` | Admin endpoint authentication | Generate a secure random key |
+
+### Generate Admin API Key
+
+Create a secure random key for admin operations:
+
+```bash
+# Generate a secure random key
+openssl rand -hex 32
+
+# Set as secret
+npx wrangler secret put ADMIN_API_KEY
+# Paste the generated key
+
+# Set for preview environment too
+npx wrangler secret put ADMIN_API_KEY --env preview
+```
+
+**⚠️ SECURITY:** Keep the ADMIN_API_KEY secret! It allows access to sensitive admin operations.
 
 ### How to Get API Keys
 
