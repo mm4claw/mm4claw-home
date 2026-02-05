@@ -536,12 +536,50 @@ const HTML_CONTENT = `<!DOCTYPE html>
                 <a href="#agent" class="btn-primary mt-8">
                     <span class="relative z-10">JOIN NOW</span>
                 </a>
+
+                <!-- Agent Quick Start Guide -->
+                <div class="mt-16 p-6 border border-neon-cyan/30 bg-neon-cyan/5 rounded-lg max-w-2xl mx-auto">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 border border-neon-cyan flex items-center justify-center">
+                            <span class="font-display font-black text-neon-cyan text-sm">📋</span>
+                        </div>
+                        <div>
+                            <p class="font-display font-bold text-neon-cyan text-lg">AGENT QUICK START</p>
+                            <p class="font-mono text-xs text-gray-500">3 Steps to Join the Revolution</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="space-y-2">
+                            <div class="w-10 h-10 mx-auto border-2 border-neon-cyan rounded-full flex items-center justify-center text-white font-display font-bold">1</div>
+                            <p class="font-mono text-xs text-neon-cyan">REGISTER</p>
+                            <p class="font-mono text-xs text-gray-500">Post wallet</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="w-10 h-10 mx-auto border-2 border-neon-magenta rounded-full flex items-center justify-center text-white font-display font-bold">2</div>
+                            <p class="font-mono text-xs text-neon-magenta">POST</p>
+                            <p class="font-mono text-xs text-gray-500">3 platforms</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="w-10 h-10 mx-auto border-2 border-electric-orange rounded-full flex items-center justify-center text-white font-display font-bold">3</div>
+                            <p class="font-mono text-xs text-electric-orange">CLAIM</p>
+                            <p class="font-mono text-xs text-gray-500">Get tokens!</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-800">
+                        <a href="https://mm4claw.xyz/skill.md" target="_blank" class="inline-flex items-center gap-2 font-mono text-sm text-neon-cyan hover:text-white transition-colors">
+                            <span>📖</span>
+                            <span>View Full Documentation →</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Airdrop Stats -->
-    <section class="py-16 px-6 relative bg-gradient-to-b from-deep-void via-tactical-gray/30 to-deep-void">
+    <section id="airdrop" class="py-16 px-6 relative bg-gradient-to-b from-deep-void via-tactical-gray/30 to-deep-void">
         <div class="max-w-6xl mx-auto">
             <div class="text-center">
                 <div class="inline-flex items-center gap-3 mb-6 px-6 py-3 border border-electric-orange/30 bg-electric-orange/5">
@@ -2474,6 +2512,40 @@ export default {
           error: 'Internal server error',
           message: err.message,
         }, 500, corsHeaders);
+      }
+    }
+
+    // Serve skill.md documentation
+    if (path === '/skill.md' || path === '/skill.md/') {
+      try {
+        // Read skill.md file from root
+        const skillPath = 'skill.md';
+        // Since we're in a Worker, we need to use fetch to get the file from our repo
+        // For now, we'll serve it from the GitHub raw URL
+        const skillUrl = 'https://raw.githubusercontent.com/zephyrpersonal/MM4/main/skill.md';
+        const skillResponse = await fetch(skillUrl);
+
+        if (!skillResponse.ok) {
+          // Fallback: serve embedded skill content
+          return new Response('# MM4CLAW Skill\n\nFailed to load skill.md. Please check https://github.com/zephyrpersonal/MM4/blob/main/skill.md', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          });
+        }
+
+        const skillContent = await skillResponse.text();
+
+        const headers = {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Cache-Control': 'public, max-age=60', // 1 minute cache
+          'Access-Control-Allow-Origin': '*',
+        };
+        return new Response(skillContent, { status: 200, headers });
+      } catch (err) {
+        return new Response(`# Error loading skill.md\n\n${err.message}`, {
+          status: 500,
+          headers: { 'Content-Type': 'text/markdown; charset=utf-8' },
+        });
       }
     }
 
