@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIP + MM4CLAW 完整生命周期测试</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      line-height: 1.6;
+    }
+    h1 { color: #00f0ff; text-align: center; margin-bottom: 10px; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 30px; }
+
+    .container {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+    }
+
+    .sidebar {
+      background: #1a1a24;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .main-content {
+      background: #1a1a24;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .step {
+      margin-bottom: 15px;
+      padding: 12px;
+      background: #252532;
+      border-radius: 6px;
+      border-left: 3px solid #555;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .step:hover { background: #2a2a3a; }
+    .step.active { border-left-color: #00f0ff; background: #1f2f3f; }
+    .step.completed { border-left-color: #00ff88; }
+    .step.error { border-left-color: #ff0040; }
+
+    .step-number {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      background: #333;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 24px;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    .step.completed .step-number { background: #00ff88; color: #000; }
+    .step.active .step-number { background: #00f0ff; color: #000; }
+
+    button {
+      background: linear-gradient(135deg, #00f0ff, #0080ff);
+      border: none;
+      color: #000;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 240, 255, 0.3);
+    }
+
+    button:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.secondary {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    button.secondary:hover {
+      background: #444;
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    .panel {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+
+    .panel.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-group {
+      margin: 15px 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #888;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      background: #0f0f15;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #fff;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #00f0ff;
+    }
+
+    .output {
+      background: #0f0f15;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+      max-height: 400px;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+
+    .output.success { border-color: #00ff88; }
+    .output.error { border-color: #ff0040; }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    .status-pending { background: #ffaa00; }
+    .status-success { background: #00ff88; }
+    .status-error { background: #ff0040; }
+
+    .info-card {
+      background: #252532;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+
+    .info-card h4 {
+      margin: 0 0 10px 0;
+      color: #00f0ff;
+    }
+
+    .key-value {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .key-value:last-child { border-bottom: none; }
+
+    .key { color: #888; }
+    .value { color: #fff; font-family: monospace; }
+
+    .progress-bar {
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00f0ff, #00ff88);
+      transition: width 0.3s;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #333;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-left: 10px;
+    }
+
+    .badge.Common { background: #888; }
+    .badge.Uncommon { background: #00ff88; color: #000; }
+    .badge.Rare { background: #0080ff; }
+    .badge.Epic { background: #aa00ff; }
+    .badge.Legendary { background: linear-gradient(90deg, #ff00a0, #ff4d00); }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .tab:hover { background: #252532; }
+    .tab.active { background: #00f0ff; color: #000; }
+
+    .hidden { display: none !important; }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #333;
+      border-top-color: #00f0ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 AIP + 🎁 MM4CLAW 完整生命周期测试</h1>
+  <p class="subtitle">一站式测试 Agent Identity Protocol 和空投系统的完整流程</p>
+
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <h3>测试步骤</h3>
+
+      <div class="step active" data-step="1" onclick="showStep(1)">
+        <span class="step-number">1</span>
+        <strong>生成密钥对</strong>
+        <div class="status-indicator status-pending" id="status1"></div>
+      </div>
+
+      <div class="step" data-step="2" onclick="showStep(2)">
+        <span class="step-number">2</span>
+        <strong>注册 AIP 身份</strong>
+        <div class="status-indicator status-pending" id="status2"></div>
+      </div>
+
+      <div class="step" data-step="3" onclick="showStep(3)">
+        <span class="step-number">3</span>
+        <strong>查询身份详情</strong>
+        <div class="status-indicator status-pending" id="status3"></div>
+      </div>
+
+      <div class="step" data-step="4" onclick="showStep(4)">
+        <span class="step-number">4</span>
+        <strong>记录活动</strong>
+        <div class="status-indicator status-pending" id="status4"></div>
+      </div>
+
+      <div class="step" data-step="5" onclick="showStep(5)">
+        <span class="step-number">5</span>
+        <strong>计算 VDM 评分</strong>
+        <div class="status-indicator status-pending" id="status5"></div>
+      </div>
+
+      <div class="step" data-step="6" onclick="showStep(6)">
+        <span class="step-number">6</span>
+        <strong>创建背书</strong>
+        <div class="status-indicator status-pending" id="status6"></div>
+      </div>
+
+      <div class="step" data-step="7" onclick="showStep(7)">
+        <span class="step-number">7</span>
+        <strong>MM4CLAW 空投注册</strong>
+        <div class="status-indicator status-pending" id="status7"></div>
+      </div>
+
+      <div class="step" data-step="8" onclick="showStep(8)">
+        <span class="step-number">8</span>
+        <strong>验证空投资格</strong>
+        <div class="status-indicator status-pending" id="status8"></div>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <button onclick="runAllTests()" style="width: 100%;">🚀 运行全部测试</button>
+        <button onclick="resetAll()" class="secondary" style="width: 100%; margin-top: 10px;">重置</button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- Step 1: 生成密钥对 -->
+      <div class="panel active" id="panel1">
+        <h2>🔑 步骤 1: 生成 Ed25519 密钥对</h2>
+        <p>生成 AIP 身份所需的密钥对，用于签名和验证。</p>
+
+        <button onclick="generateKeyPair()">生成密钥对</button>
+
+        <div class="info-card hidden" id="keyInfo">
+          <h4>生成的密钥信息</h4>
+          <div class="key-value">
+            <span class="key">Identity ID (Base58):</span>
+            <span class="value" id="identityId">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Public Key (32 bytes):</span>
+            <span class="value" id="publicKey">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Private Key (32 bytes):</span>
+            <span class="value" id="privateKey" style="color: #ff0040;">[已隐藏，用于签名]</span>
+          </div>
+        </div>
+
+        <div class="output" id="output1">点击"生成密钥对"按钮开始...</div>
+      </div>
+
+      <!-- Step 2: 注册 AIP 身份 -->
+      <div class="panel" id="panel2">
+        <h2>📝 步骤 2: 注册 AIP 身份</h2>
+        <p>使用生成的密钥对注册 AIP 身份。</p>
+
+        <div class="input-group">
+          <label>Agent 名称</label>
+          <input type="text" id="agentName" value="Test Agent" placeholder="输入 Agent 名称">
+        </div>
+
+        <div class="input-group">
+          <label>描述</label>
+          <input type="text" id="agentDesc" value="Testing AIP lifecycle" placeholder="输入描述">
+        </div>
+
+        <button onclick="registerAIPIdentity()" id="btnRegister" disabled>注册身份</button>
+        <button onclick="showStep(1)" class="secondary">上一步</button>
+
+        <div class="output" id="output2">请先完成步骤 1...</div>
+      </div>
+
+      <!-- Step 3: 查询身份详情 -->
+      <div class="panel" id="panel3">
+        <h2>🔍 步骤 3: 查询身份详情</h2>
+        <p>查询刚刚注册的 AIP 身份详情。</p>
+
+        <button onclick="queryIdentity()" id="btnQuery" disabled>查询身份</button>
+        <button onclick="showStep(2)" class="secondary">上一步</button>
+
+        <div class="output" id="output3">请先完成步骤 2...</div>
+      </div>
+
+      <!-- Step 4: 记录活动 -->
+      <div class="panel" id="panel4">
+        <h2>📊 步骤 4: 记录代理活动</h2>
+        <p>记录代理的活动，用于 VDM 评分计算。</p>
+
+        <div class="input-group">
+          <label>活动类型</label>
+          <select id="activityType" style="width: 100%; padding: 10px; background: #0f0f15; border: 1px solid #333; color: #fff;">
+            <option value="post">发布内容 (post)</option>
+            <option value="interact">交互 (interact)</option>
+            <option value="compute">计算 (compute)</option>
+            <option value="verify">验证 (verify)</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>熵值 (0.1 - 1.0)</label>
+          <input type="number" id="entropy" value="0.5" min="0.1" max="1.0" step="0.1">
+        </div>
+
+        <div class="input-group">
+          <label>计算能量 (0.5 - 2.0)</label>
+          <input type="number" id="compute" value="1.0" min="0.5" max="2.0" step="0.1">
+        </div>
+
+        <button onclick="recordActivity()" id="btnRecord" disabled>记录活动</button>
+        <button onclick="recordMultipleActivities()" class="secondary">生成 10 条随机活动</button>
+        <button onclick="showStep(3)" class="secondary">上一步</button>
+
+        <div class="output" id="output4">请先完成步骤 2...</div>
+      </div>
+
+      <!-- Step 5: 计算 VDM 评分 -->
+      <div class="panel" id="panel5">
+        <h2>📈 步骤 5: 计算 VDM 评分</h2>
+        <p>基于活动记录和背书计算 VDM (Variational Decision Making) 评分。</p>
+
+        <button onclick="calculateVDM()" id="btnVDM" disabled>计算 VDM 评分</button>
+        <button onclick="getVDMHistory()" class="secondary">查看评分历史</button>
+        <button onclick="showStep(4)" class="secondary">上一步</button>
+
+        <div class="info-card hidden" id="vdmInfo">
+          <h4>VDM 评分结果 <span class="badge" id="vdmLevel">-</span></h4>
+          <div class="key-value">
+            <span class="key">Identity Score:</span>
+            <span class="value" id="vdmIdentity">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Signal Score:</span>
+            <span class="value" id="vdmSignal">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Entropy:</span>
+            <span class="value" id="vdmEntropy">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Compute Energy:</span>
+            <span class="value" id="vdmCompute">-</span>
+          </div>
+        </div>
+
+        <div class="output" id="output5">请先完成步骤 2...</div>
+      </div>
+
+      <!-- Step 6: 创建背书 -->
+      <div class="panel" id="panel6">
+        <h2>🤝 步骤 6: 创建背书</h2>
+        <p>为其他身份创建背书，或接收来自其他身份的背书。</p>
+
+        <div class="input-group">
+          <label>被背书者 Identity ID</label>
+          <input type="text" id="recipientId" placeholder="输入对方的 Identity ID">
+        </div>
+
+        <div class="input-group">
+          <label>背书分数 (0-100)</label>
+          <input type="number" id="endorseScore" value="80" min="0" max="100">
+        </div>
+
+        <div class="input-group">
+          <label>背书消息 (可选)</label>
+          <input type="text" id="endorseMessage" value="Great agent!" placeholder="输入背书消息">
+        </div>
+
+        <button onclick="createEndorsement()" id="btnEndorse" disabled>创建背书</button>
+        <button onclick="getMyEndorsements()" class="secondary">查看我的背书</button>
+        <button onclick="showStep(5)" class="secondary">上一步</button>
+
+        <div class="output" id="output6">请先完成步骤 2...</div>
+      </div>
+
+      <!-- Step 7: MM4CLAW 空投注册 -->
+      <div class="panel" id="panel7">
+        <h2>🎁 步骤 7: MM4CLAW 空投注册</h2>
+        <p>注册 MM4CLAW 空投系统，关联钱包地址。</p>
+
+        <div class="input-group">
+          <label>钱包地址 (Base 链)</label>
+          <input type="text" id="walletAddress" placeholder="0x..." value="0x1234567890123456789012345678901234567890">
+        </div>
+
+        <div class="input-group">
+          <label>Agent 名称</label>
+          <input type="text" id="mm4Name" value="" placeholder="输入 Agent 名称">
+        </div>
+
+        <button onclick="registerAirdrop()" id="btnAirdrop">注册空投</button>
+        <button onclick="showStep(6)" class="secondary">上一步</button>
+
+        <div class="info-card hidden" id="airdropInfo">
+          <h4>空投注册信息</h4>
+          <div class="key-value">
+            <span class="key">API Key:</span>
+            <span class="value" id="apiKey">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Claim Code:</span>
+            <span class="value" id="claimCode" style="color: #00f0ff; font-weight: bold;">-</span>
+          </div>
+          <div class="key-value">
+            <span class="key">状态:</span>
+            <span class="value" id="airdropStatus">-</span>
+          </div>
+        </div>
+
+        <div class="output" id="output7">输入钱包地址后点击注册...</div>
+      </div>
+
+      <!-- Step 8: 验证空投资格 -->
+      <div class="panel" id="panel8">
+        <h2>✅ 步骤 8: 验证空投资格</h2>
+        <p>验证各个平台的帖子，完成空投资格认证。</p>
+
+        <div class="info-card">
+          <h4>验证状态</h4>
+          <div class="key-value">
+            <span class="key">Moltbook:</span>
+            <span class="value" id="verifyMoltbook">❌ 未验证</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Moltx:</span>
+            <span class="value" id="verifyMoltx">❌ 未验证</span>
+          </div>
+          <div class="key-value">
+            <span class="key">Twitter:</span>
+            <span class="value" id="verifyTwitter">❌ 未验证</span>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>平台</label>
+          <select id="verifyPlatform" style="width: 100%; padding: 10px; background: #0f0f15; border: 1px solid #333; color: #fff;">
+            <option value="moltbook">Moltbook</option>
+            <option value="moltx">Moltx</option>
+            <option value="twitter">Twitter</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>帖子 URL</label>
+          <input type="text" id="postUrl" placeholder="https://...">
+        </div>
+
+        <button onclick="verifyPlatform()" id="btnVerify">验证平台</button>
+        <button onclick="checkAirdropStatus()" class="secondary">检查空投状态</button>
+        <button onclick="showStep(7)" class="secondary">上一步</button>
+
+        <div class="output" id="output8">完成步骤 7 后可以开始验证...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局状态
+    const state = {
+      keyPair: null,
+      identityId: null,
+      signature: null,
+      apiKey: null,
+      claimCode: null,
+      verificationStatus: {
+        moltbook: false,
+        moltx: false,
+        twitter: false
+      }
+    };
+
+    const API_BASE = 'https://preview.mm4claw.xyz';
+
+    // 工具函数
+    function base64UrlToUint8Array(base64Url) {
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const padding = '='.repeat((4 - base64.length % 4) % 4);
+      const binaryString = atob(base64 + padding);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function toBase58(bytes) {
+      const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+      let num = BigInt(0);
+      for (const byte of bytes) {
+        num = (num << BigInt(8)) | BigInt(byte);
+      }
+      let result = '';
+      while (num > BigInt(0)) {
+        result = alphabet[Number(num % BigInt(58))] + result;
+        num = num / BigInt(58);
+      }
+      for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+        result = '1' + result;
+      }
+      return result || '1';
+    }
+
+    function updateProgress(step) {
+      const progress = (step / 8) * 100;
+      document.getElementById('progressBar').style.width = progress + '%';
+    }
+
+    function setStepStatus(step, status) {
+      const el = document.querySelector(`[data-step="${step}"]`);
+      const indicator = document.getElementById(`status${step}`);
+
+      el.classList.remove('completed', 'error', 'active');
+      indicator.classList.remove('status-pending', 'status-success', 'status-error');
+
+      if (status === 'completed') {
+        el.classList.add('completed');
+        indicator.classList.add('status-success');
+      } else if (status === 'error') {
+        el.classList.add('error');
+        indicator.classList.add('status-error');
+      } else {
+        indicator.classList.add('status-pending');
+      }
+    }
+
+    function showStep(step) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+
+      document.getElementById(`panel${step}`).classList.add('active');
+      document.querySelector(`[data-step="${step}"]`).classList.add('active');
+
+      updateProgress(step);
+    }
+
+    function showOutput(step, data, isError = false) {
+      const output = document.getElementById(`output${step}`);
+      output.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      output.classList.remove('success', 'error');
+      output.classList.add(isError ? 'error' : 'success');
+    }
+
+    // Step 1: 生成密钥对
+    async function generateKeyPair() {
+      try {
+        showOutput(1, '正在生成 Ed25519 密钥对...');
+
+        const keyPair = await crypto.subtle.generateKey(
+          { name: 'Ed25519' },
+          true,
+          ['sign', 'verify']
+        );
+
+        const publicKeyBuf = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+        const publicKey = new Uint8Array(publicKeyBuf);
+
+        const privateKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+        const privateKey = base64UrlToUint8Array(privateKeyJwk.d);
+
+        // 签名
+        const signature = await crypto.subtle.sign('Ed25519', keyPair.privateKey, publicKey);
+        const sigArray = new Uint8Array(signature);
+
+        state.keyPair = { publicKey, privateKey, keyPair };
+        state.identityId = toBase58(publicKey);
+        state.signature = sigArray;
+
+        // 显示信息
+        document.getElementById('identityId').textContent = state.identityId;
+        document.getElementById('publicKey').textContent = Array.from(publicKey).join(', ');
+        document.getElementById('keyInfo').classList.remove('hidden');
+
+        document.getElementById('btnRegister').disabled = false;
+        document.getElementById('mm4Name').value = document.getElementById('agentName').value;
+
+        showOutput(1, {
+          success: true,
+          identity_id: state.identityId,
+          public_key: Array.from(publicKey),
+          signature: Array.from(sigArray)
+        });
+
+        setStepStatus(1, 'completed');
+      } catch (err) {
+        showOutput(1, '错误: ' + err.message, true);
+        console.error(err);
+      }
+    }
+
+    // Step 2: 注册 AIP 身份
+    async function registerAIPIdentity() {
+      if (!state.keyPair) {
+        showOutput(2, '请先完成步骤 1', true);
+        return;
+      }
+
+      try {
+        showOutput(2, '正在注册 AIP 身份...');
+
+        const response = await fetch(`${API_BASE}/aip/identities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            public_key: Array.from(state.keyPair.publicKey),
+            signature: Array.from(state.signature),
+            metadata: {
+              name: document.getElementById('agentName').value,
+              description: document.getElementById('agentDesc').value,
+              created_by: 'AIP Lifecycle Test'
+            }
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showOutput(2, data);
+          setStepStatus(2, 'completed');
+          document.getElementById('btnQuery').disabled = false;
+          document.getElementById('btnRecord').disabled = false;
+          document.getElementById('btnVDM').disabled = false;
+          document.getElementById('btnEndorse').disabled = false;
+        } else {
+          showOutput(2, data, true);
+          setStepStatus(2, 'error');
+        }
+      } catch (err) {
+        showOutput(2, '错误: ' + err.message, true);
+      }
+    }
+
+    // Step 3: 查询身份
+    async function queryIdentity() {
+      if (!state.identityId) {
+        showOutput(3, '请先完成步骤 1 和 2', true);
+        return;
+      }
+
+      try {
+        showOutput(3, '正在查询身份...');
+
+        const response = await fetch(`${API_BASE}/aip/identities/${state.identityId}`);
+        const data = await response.json();
+
+        showOutput(3, data, !data.success);
+        if (data.success) setStepStatus(3, 'completed');
+      } catch (err) {
+        showOutput(3, '错误: ' + err.message, true);
+      }
+    }
+
+    // Step 4: 记录活动
+    async function recordActivity() {
+      if (!state.identityId) {
+        showOutput(4, '请先完成步骤 1 和 2', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/aip/activities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identity_id: state.identityId,
+            action: document.getElementById('activityType').value,
+            entropy: parseFloat(document.getElementById('entropy').value),
+            compute: parseFloat(document.getElementById('compute').value)
+          })
+        });
+
+        const data = await response.json();
+        showOutput(4, data, !data.success);
+        if (data.success) setStepStatus(4, 'completed');
+      } catch (err) {
+        showOutput(4, '错误: ' + err.message, true);
+      }
+    }
+
+    async function recordMultipleActivities() {
+      if (!state.identityId) {
+        showOutput(4, '请先完成步骤 1 和 2', true);
+        return;
+      }
+
+      showOutput(4, '正在生成 10 条随机活动...');
+
+      const actions = ['post', 'interact', 'compute', 'verify'];
+      let successCount = 0;
+
+      for (let i = 0; i < 10; i++) {
+        try {
+          const response = await fetch(`${API_BASE}/aip/activities`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              identity_id: state.identityId,
+              action: actions[Math.floor(Math.random() * actions.length)],
+              entropy: 0.5 + Math.random() * 0.5,
+              compute: 0.5 + Math.random() * 1.5
+            })
+          });
+
+          if ((await response.json()).success) successCount++;
+        } catch (e) {
+          console.error('Activity record failed:', e);
+        }
+      }
+
+      showOutput(4, { success: true, message: `成功记录 ${successCount}/10 条活动` });
+      setStepStatus(4, 'completed');
+    }
+
+    // Step 5: 计算 VDM
+    async function calculateVDM() {
+      if (!state.identityId) {
+        showOutput(5, '请先完成步骤 1 和 2', true);
+        return;
+      }
+
+      try {
+        showOutput(5, '正在计算 VDM 评分...');
+
+        const response = await fetch(`${API_BASE}/aip/identities/${state.identityId}/vdm/calculate`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          document.getElementById('vdmInfo').classList.remove('hidden');
+          document.getElementById('vdmIdentity').textContent = data.data.identity;
+          document.getElementById('vdmSignal').textContent = data.data.signal;
+          document.getElementById('vdmEntropy').textContent = data.data.entropy;
+          document.getElementById('vdmCompute').textContent = data.data.compute;
+
+          const levelBadge = document.getElementById('vdmLevel');
+          levelBadge.textContent = data.data.level;
+          levelBadge.className = 'badge ' + data.data.level;
+        }
+
+        showOutput(5, data, !data.success);
+        if (data.success) setStepStatus(5, 'completed');
+      } catch (err) {
+        showOutput(5, '错误: ' + err.message, true);
+      }
+    }
+
+    async function getVDMHistory() {
+      if (!state.identityId) {
+        showOutput(5, '请先完成步骤 1', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/aip/identities/${state.identityId}/vdm/history`);
+        const data = await response.json();
+        showOutput(5, data, !data.success);
+      } catch (err) {
+        showOutput(5, '错误: ' + err.message, true);
+      }
+    }
+
+    // Step 6: 创建背书
+    async function createEndorsement() {
+      if (!state.identityId || !state.keyPair) {
+        showOutput(6, '请先完成步骤 1 和 2', true);
+        return;
+      }
+
+      const recipientId = document.getElementById('recipientId').value;
+      if (!recipientId) {
+        showOutput(6, '请输入被背书者的 Identity ID', true);
+        return;
+      }
+
+      try {
+        showOutput(6, '正在创建背书签名...');
+
+        // 创建背书签名
+        const score = parseInt(document.getElementById('endorseScore').value);
+        const message = new TextEncoder().encode(`endorse:${state.identityId}:${recipientId}:${score}`);
+        const signature = await crypto.subtle.sign('Ed25519', state.keyPair.keyPair.privateKey, message);
+
+        const response = await fetch(`${API_BASE}/aip/endorsements`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endorser_id: state.identityId,
+            recipient_id: recipientId,
+            score: score,
+            signature: Array.from(new Uint8Array(signature)),
+            message: document.getElementById('endorseMessage').value
+          })
+        });
+
+        const data = await response.json();
+        showOutput(6, data, !data.success);
+        if (data.success) setStepStatus(6, 'completed');
+      } catch (err) {
+        showOutput(6, '错误: ' + err.message, true);
+      }
+    }
+
+    async function getMyEndorsements() {
+      if (!state.identityId) {
+        showOutput(6, '请先完成步骤 1', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/aip/identities/${state.identityId}/endorsements`);
+        const data = await response.json();
+        showOutput(6, data, !data.success);
+      } catch (err) {
+        showOutput(6, '错误: ' + err.message, true);
+      }
+    }
+
+    // Step 7: 空投注册
+    async function registerAirdrop() {
+      const wallet = document.getElementById('walletAddress').value;
+      if (!wallet.match(/^0x[a-fA-F0-9]{40}$/)) {
+        showOutput(7, '错误: 无效的钱包地址格式', true);
+        return;
+      }
+
+      try {
+        showOutput(7, '正在注册 MM4CLAW 空投...');
+
+        const response = await fetch(`${API_BASE}/api/vote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wallet: wallet,
+            agent_name: document.getElementById('mm4Name').value || 'Test Agent',
+            description: 'Registered via AIP Lifecycle Test'
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          state.apiKey = data.agent.api_key;
+          state.claimCode = data.agent.claim_code;
+
+          document.getElementById('apiKey').textContent = state.apiKey;
+          document.getElementById('claimCode').textContent = state.claimCode;
+          document.getElementById('airdropStatus').textContent = data.agent.status;
+          document.getElementById('airdropInfo').classList.remove('hidden');
+
+          showOutput(7, data);
+          setStepStatus(7, 'completed');
+          document.getElementById('btnVerify').disabled = false;
+        } else {
+          showOutput(7, data, true);
+        }
+      } catch (err) {
+        showOutput(7, '错误: ' + err.message, true);
+      }
+    }
+
+    // Step 8: 验证平台
+    async function verifyPlatform() {
+      if (!state.apiKey) {
+        showOutput(8, '请先完成步骤 7', true);
+        return;
+      }
+
+      const platform = document.getElementById('verifyPlatform').value;
+      const url = document.getElementById('postUrl').value;
+
+      if (!url) {
+        showOutput(8, '请输入帖子 URL', true);
+        return;
+      }
+
+      try {
+        showOutput(8, `正在验证 ${platform}...`);
+
+        const response = await fetch(`${API_BASE}/api/claim`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.apiKey}`
+          },
+          body: JSON.stringify({
+            platform: platform,
+            post_url: url
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.verified) {
+          state.verificationStatus[platform] = true;
+          document.getElementById(`verify${platform.charAt(0).toUpperCase() + platform.slice(1)}`).textContent = '✅ 已验证';
+
+          if (data.all_verified) {
+            showOutput(8, { ...data, message: '🎉 恭喜！已完成所有平台验证，获得空投资格！' });
+            setStepStatus(8, 'completed');
+          } else {
+            showOutput(8, data);
+          }
+        } else {
+          showOutput(8, data, !data.success);
+        }
+      } catch (err) {
+        showOutput(8, '错误: ' + err.message, true);
+      }
+    }
+
+    async function checkAirdropStatus() {
+      if (!state.apiKey) {
+        showOutput(8, '请先完成步骤 7', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/status`, {
+          headers: { 'Authorization': `Bearer ${state.apiKey}` }
+        });
+
+        const data = await response.json();
+        showOutput(8, data, !data.success);
+
+        if (data.success && data.verification_status) {
+          Object.keys(data.verification_status).forEach(platform => {
+            if (data.verification_status[platform]) {
+              state.verificationStatus[platform] = true;
+              document.getElementById(`verify${platform.charAt(0).toUpperCase() + platform.slice(1)}`).textContent = '✅ 已验证';
+            }
+          });
+        }
+      } catch (err) {
+        showOutput(8, '错误: ' + err.message, true);
+      }
+    }
+
+    // 运行全部测试
+    async function runAllTests() {
+      showStep(1);
+      await generateKeyPair();
+
+      if (!state.keyPair) return;
+
+      showStep(2);
+      await registerAIPIdentity();
+
+      showStep(3);
+      await queryIdentity();
+
+      showStep(4);
+      await recordMultipleActivities();
+
+      showStep(5);
+      await calculateVDM();
+
+      // Step 6 需要另一个身份，跳过或提示
+      showStep(7);
+      await registerAirdrop();
+
+      showStep(8);
+      showOutput(8, '请在各平台发布包含 claim_code 和 @Mm4Claw 的帖子，然后输入 URL 进行验证。');
+    }
+
+    // 重置
+    function resetAll() {
+      state.keyPair = null;
+      state.identityId = null;
+      state.signature = null;
+      state.apiKey = null;
+      state.claimCode = null;
+      state.verificationStatus = { moltbook: false, moltx: false, twitter: false };
+
+      document.getElementById('keyInfo').classList.add('hidden');
+      document.getElementById('vdmInfo').classList.add('hidden');
+      document.getElementById('airdropInfo').classList.add('hidden');
+
+      document.getElementById('btnRegister').disabled = true;
+      document.getElementById('btnQuery').disabled = true;
+      document.getElementById('btnRecord').disabled = true;
+      document.getElementById('btnVDM').disabled = true;
+      document.getElementById('btnEndorse').disabled = true;
+      document.getElementById('btnVerify').disabled = true;
+
+      ['Moltbook', 'Moltx', 'Twitter'].forEach(p => {
+        document.getElementById(`verify${p}`).textContent = '❌ 未验证';
+      });
+
+      for (let i = 1; i <= 8; i++) {
+        setStepStatus(i, 'pending');
+        document.getElementById(`output${i}`).textContent = i === 1 ? '点击"生成密钥对"按钮开始...' : `请先完成步骤 ${i-1}...`;
+        document.getElementById(`output${i}`).classList.remove('success', 'error');
+      }
+
+      showStep(1);
+      updateProgress(0);
+    }
+  </script>
+</body>
+</html>
